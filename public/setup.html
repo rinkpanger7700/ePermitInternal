@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Create Bureau User</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f0f4ff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: white; border-radius: 16px; padding: 40px; width: 420px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+    h1 { color: #1a3a6e; font-size: 20px; margin: 0 0 6px; }
+    p { color: #6b88b5; font-size: 13px; margin: 0 0 24px; }
+    .info { background: #f8faff; border: 1px solid #dce6f5; border-radius: 10px; padding: 14px 18px; font-size: 13px; margin-bottom: 20px; }
+    .info b { color: #1a3a6e; }
+    .info div { margin: 4px 0; color: #374151; }
+    button { width: 100%; background: #1e50a0; color: white; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #153e7f; }
+    button:disabled { background: #9bb3d0; cursor: not-allowed; }
+    #result { margin-top: 18px; padding: 14px 18px; border-radius: 10px; font-size: 13px; display: none; }
+    .ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .err { background: #fff0f0; border: 1px solid #fca5a5; color: #b91c1c; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🏢 Create Bureau User</h1>
+    <p>Creates the DHSUD bureau officer account in Supabase.</p>
+
+    <div class="info">
+      <b>Credentials that will be created:</b>
+      <div>📧 Email: bureau@dhsud.gov.ph</div>
+      <div>🔑 Password: Dhsud@2026!</div>
+      <div>👤 Role: Bureau Officer</div>
+      <div>🏛️ Office: Housing and Real Estate Development Bureau</div>
+    </div>
+
+    <button id="btn" onclick="createUser()">Create Bureau User</button>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function createUser() {
+      const btn = document.getElementById('btn');
+      const result = document.getElementById('result');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Creating…';
+      result.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/create-bureau', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          result.className = 'ok';
+          result.innerHTML = `
+            <b>✅ Bureau user created successfully!</b><br><br>
+            You can now log in with:<br>
+            <b>Email:</b> ${data.email}<br>
+            <b>Password:</b> ${data.password}<br>
+            <b>User ID:</b> <code style="font-size:11px">${data.userId}</code>
+          `;
+        } else {
+          result.className = 'err';
+          result.innerHTML = `<b>❌ Error at step: ${data.step || 'unknown'}</b><br>${data.error}`;
+        }
+      } catch (e) {
+        result.className = 'err';
+        result.innerHTML = `<b>❌ Network error:</b> ${e.message}`;
+      }
+
+      result.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = 'Create Bureau User';
+    }
+  </script>
+</body>
+</html>

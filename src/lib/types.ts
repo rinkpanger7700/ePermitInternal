@@ -1,3 +1,6 @@
+export type InternalRole =
+  | "reviewer"
+  | "inspector"
   | "approver"
   | "admin"
   | "records"

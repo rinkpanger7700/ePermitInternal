@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import {
   ClipboardList,
@@ -9,13 +10,8 @@ import {
   Zap,
   ArrowRight,
   Info,
-  Filter,
   MoreVertical,
   X,
-  FileText,
-  MapPin,
-  User,
-  Clock,
   ChevronDown,
 } from "lucide-react";
 
@@ -71,163 +67,6 @@ function dueDateLabel(dateStr: string) {
   return { date: formatted, sub: `(${diff} days left)`, color: "text-gray-500" };
 }
 
-/* ────────────────────────────────────────────── Case Detail Modal */
-function CaseModal({
-  app,
-  onClose,
-}: {
-  app: Application;
-  onClose: () => void;
-}) {
-  const dl = dueDateLabel(app.due_date);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-in">
-        {/* Header */}
-        <div className="bg-[#1e3a8a] text-white px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText size={20} />
-            <div>
-              <h2 className="font-bold text-lg">Case Details</h2>
-              <p className="text-blue-200 text-xs">{app.reference_no}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 space-y-6">
-          {/* Status banner */}
-          <div
-            className={`flex items-center gap-3 p-3 rounded-lg border ${app.queue_status === "Overdue"
-              ? "bg-red-50 border-red-200"
-              : app.queue_status === "Due Today"
-                ? "bg-orange-50 border-orange-200"
-                : app.queue_status === "Due Soon"
-                  ? "bg-yellow-50 border-yellow-200"
-                  : "bg-green-50 border-green-200"
-              }`}
-          >
-            <AlertTriangle
-              size={18}
-              className={statusBadge(app.queue_status)}
-            />
-            <span className={`text-sm font-medium ${statusBadge(app.queue_status)}`}>
-              Status: {app.queue_status}
-            </span>
-          </div>
-
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Permit No.
-              </label>
-              <p className="text-sm font-semibold text-gray-800 mt-1">
-                {app.reference_no}
-              </p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Current Stage
-              </label>
-              <p className="text-sm font-semibold text-gray-800 mt-1">
-                {app.status}
-              </p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Applicant
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <User size={14} className="text-gray-400" />
-                <p className="text-sm font-semibold text-gray-800">
-                  {app.applicant_name}
-                </p>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Project Name
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <MapPin size={14} className="text-gray-400" />
-                <p className="text-sm font-semibold text-gray-800">
-                  {app.project_name}
-                </p>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Priority
-              </label>
-              <div className="mt-1">
-                <span
-                  className={`inline-block text-xs font-semibold px-3 py-1 rounded-full border ${priorityBadge(app.priority)}`}
-                >
-                  {app.priority}
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Due Date
-              </label>
-              <div className="flex items-center gap-2 mt-1">
-                <Clock size={14} className="text-gray-400" />
-                <p className="text-sm font-semibold text-gray-800">
-                  {dl.date}{" "}
-                  <span className={`text-xs font-normal ${dl.color}`}>
-                    {dl.sub}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Region */}
-          {app.region && (
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-                Region
-              </label>
-              <p className="text-sm font-semibold text-gray-800 mt-1">
-                {app.region}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-gray-100 px-6 py-4 flex justify-end gap-3 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            Close
-          </button>
-          <button className="px-5 py-2 text-sm text-white bg-[#1e3a8a] hover:bg-blue-800 rounded-lg transition-colors font-medium">
-            Start Review
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ────────────────────────────────────────────── Column Filter Dropdown */
 function ColumnFilterDropdown({
   values,
@@ -266,11 +105,10 @@ function ColumnFilterDropdown({
 
 /* ────────────────────────────────────────────── REGIONAL DASHBOARD */
 export function RegionalDashboard() {
+  const router = useRouter();
   const supabase = createClient();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [showFilter, setShowFilter] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [openFilterColumn, setOpenFilterColumn] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -280,10 +118,6 @@ export function RegionalDashboard() {
     queue_status: "",
     status: "",
   });
-
-  function setFilter(key: keyof typeof filters, val: string) {
-    setFilters((prev) => ({ ...prev, [key]: val }));
-  }
 
   function clearFilters() {
     setFilters({ search: "", priority: "", queue_status: "", status: "" });
@@ -713,7 +547,7 @@ export function RegionalDashboard() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => setSelectedApp(app)}
+                            onClick={() => router.push(`/dashboard/applications/${app.id}`)}
                             className="text-xs font-medium px-4 py-1.5 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
                           >
                             Open Case
@@ -732,13 +566,7 @@ export function RegionalDashboard() {
         </div>
       </div>
 
-      {/* ── Case Modal ── */}
-      {selectedApp && (
-        <CaseModal
-          app={selectedApp}
-          onClose={() => setSelectedApp(null)}
-        />
-      )}
+
     </div>
   );
 }

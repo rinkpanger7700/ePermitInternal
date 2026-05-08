@@ -25,7 +25,7 @@ const STEPS = ["Intake", "Auto-Check", "Evaluation", "Inspection", "Approval", "
 const STEP_INDEX: Record<string, number> = {
   "Initial Review": 0,
   "Auto-Check": 1,
-  "Payment Verification": 1,
+  "Under Review": 1,
   "Evaluation": 2,
   "Inspection": 3,
   "For Approval": 4,
@@ -98,7 +98,7 @@ function StatusBadge({ status }: { status: string }) {
     Returned: "bg-gray-100 text-gray-600 border-gray-200",
     "For Compliance": "bg-orange-100 text-orange-600 border-orange-200",
     "Initial Review": "bg-indigo-100 text-indigo-700 border-indigo-200",
-    "Payment Verification": "bg-yellow-100 text-yellow-700 border-yellow-200",
+    "Under Review": "bg-yellow-100 text-yellow-700 border-yellow-200",
   };
   return (
     <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded border ${map[status] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>

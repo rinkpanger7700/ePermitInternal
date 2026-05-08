@@ -11,6 +11,7 @@ import ProceedReleaseModal from "../ProceedReleaseModal";
 
 /* ── Types ── */
 interface AppRow {
+  id: string;
   reference_no: string; applicant_name: string; project_name: string;
   app_type: string; status: string; queue_status: string; due_date: string;
 }
@@ -18,7 +19,7 @@ interface AppRow {
 /* ── Static data matching screenshot ── */
 const STEPS = ["Intake", "Auto-Check", "Requirements Validation", "Evaluation", "Inspection", "Approval", "Releasing"];
 const STEP_INDEX: Record<string, number> = {
-  "Initial Review": 0, "Auto-Check": 1, "Payment Verification": 1,
+  "Initial Review": 0, "Auto-Check": 1, "Under Review": 1,
   "Requirements Validation": 2, "Evaluation": 3, "Inspection": 4, "Inspection in Progress": 4,
   "For Approval": 5, "Approval": 5, "Ready for Release": 6, "Released": 6, "Releasing": 6,
 };
@@ -124,6 +125,7 @@ export default function ReleasingPage() {
       if (error || !data) { console.error("[Review] fetch error:", error?.message); setLoading(false); return; }
       const r = data as any;
       setApp({
+        id: r.id,
         reference_no: r.reference_no ?? "", applicant_name: r.applicant_name ?? "",
         project_name: r.project_name ?? "",
         app_type: r.app_type ?? r.permit_type ?? (r.reference_no?.startsWith("CLS") ? "C&LS" : "DP"),

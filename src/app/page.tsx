@@ -70,13 +70,13 @@ export default function LoginPage() {
 
       // Read role from user metadata, fallback to email prefix check
       let role = data.user?.user_metadata?.role;
-      
+
       if (!role) {
-        role = "regional"; // default
+        role = "Regional"; // default
         const lowerEmail = email.toLowerCase();
-        if (lowerEmail.includes("admin")) role = "admin";
-        else if (lowerEmail.includes("executive")) role = "executive";
-        else if (lowerEmail.includes("bureau")) role = "bureau";
+        if (lowerEmail.includes("admin")) role = "Admin";
+        else if (lowerEmail.includes("executive")) role = "Executive";
+        else if (lowerEmail.includes("bureau")) role = "Bureau";
       }
 
       // Store in localStorage so the dashboard can render correctly

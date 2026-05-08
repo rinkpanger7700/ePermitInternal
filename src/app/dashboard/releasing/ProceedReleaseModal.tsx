@@ -1,7 +1,11 @@
-import { X, FileText, Info, Save, Send, CheckCircle } from "lucide-react";
+import { useState } from "react";
+import { X, FileText, Info, Save, Send, CheckCircle, PartyPopper } from "lucide-react";
+import { createClient } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 interface ProceedReleaseModalProps {
   app: {
+    id: string;
     reference_no: string;
     project_name: string;
     applicant_name: string;
@@ -11,6 +15,78 @@ interface ProceedReleaseModalProps {
 }
 
 export default function ProceedReleaseModal({ app, onClose }: ProceedReleaseModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const supabase = createClient();
+  const router = useRouter();
+
+  const handleRelease = async () => {
+    setLoading(true);
+
+    // Step 1: Update the application stage to 'Released'
+    await supabase
+      .from("applications")
+      .update({ current_stage: "Released" })
+      .eq("id", app.id);
+
+    // Step 2: Update existing releasing record to 'Released', or insert if none exists
+    const { data: existingRelease } = await supabase
+      .from("releasing")
+      .select("id")
+      .eq("application_id", app.id)
+      .limit(1)
+      .single();
+
+    if (existingRelease) {
+      await supabase
+        .from("releasing")
+        .update({
+          status: "Released",
+          released_by: "Records Section",
+          release_date: new Date().toISOString().split("T")[0],
+          tracking_no: app.reference_no + "-R",
+          delivery_method: "Portal + Email",
+        })
+        .eq("id", existingRelease.id);
+    } else {
+      await supabase.from("releasing").insert({
+        application_id: app.id,
+        released_by: "Records Section",
+        release_date: new Date().toISOString().split("T")[0],
+        tracking_no: app.reference_no + "-R",
+        delivery_method: "Portal + Email",
+        status: "Released",
+      });
+    }
+
+    setLoading(false);
+    setShowSuccess(true);
+  };
+
+  if (showSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="p-8 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-5">
+              <CheckCircle size={36} className="text-green-600" />
+            </div>
+            <PartyPopper size={40} className="text-[#0033A0] mb-2" />
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Application Successfully Released!</h2>
+            <p className="text-sm text-gray-500 mb-1">{app.reference_no}</p>
+            <p className="text-xs text-gray-400 mb-6">{app.project_name}</p>
+            <button
+              onClick={() => { router.push("/dashboard/releasing"); }}
+              className="w-full py-2.5 rounded-lg bg-[#0033A0] text-white font-bold hover:bg-blue-800 transition-colors text-sm shadow"
+            >
+              Back to Releasing
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl flex flex-col max-h-[95vh] overflow-hidden">
@@ -230,8 +306,11 @@ export default function ProceedReleaseModal({ app, onClose }: ProceedReleaseModa
             <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border border-blue-600 text-blue-700 font-bold hover:bg-blue-50 transition-colors text-sm">
               <Save size={16} /> Save Draft
             </button>
-            <button className="flex-[1.5] flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#0033A0] text-white font-bold hover:bg-blue-800 transition-colors text-sm shadow">
-              <Send size={16} /> Confirm and Release
+            <button 
+              disabled={loading}
+              onClick={handleRelease} 
+              className="flex-[1.5] flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#0033A0] text-white font-bold hover:bg-blue-800 transition-colors text-sm shadow disabled:opacity-50">
+              <Send size={16} /> {loading ? "Releasing..." : "Confirm and Release"}
             </button>
           </div>
           <p className="text-center text-[10px] text-gray-500 flex items-center justify-center gap-1">

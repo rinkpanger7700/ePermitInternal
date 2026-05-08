@@ -21,6 +21,7 @@ interface AppRow {
   id: string;
   reference_no: string;
   applicant_name: string;
+  applicant_email: string;
   project_name: string;
   app_type: string;
   office: string;
@@ -48,13 +49,28 @@ function fmtDate(d: string | null | undefined) {
   return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
 }
 
+/* Compute traffic-light status from due_date */
+function computeQueueStatus(due_date: string): string {
+  if (!due_date) return "Pending";
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const due = new Date(due_date);
+  if (isNaN(due.getTime())) return "Pending";
+  const dueStart = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const diffDays = Math.floor((dueStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return "Overdue";
+  if (diffDays === 0) return "Due Today";
+  if (diffDays <= 7) return "On time";
+  return "Pending";
+}
+
 /* Traffic light dot */
 function TrafficDot({ status }: { status: string }) {
   const color =
     status === "Overdue"   ? "bg-red-500" :
-    status === "Due Today" ? "bg-orange-400" :
-    status === "Due Soon"  ? "bg-yellow-400" :
-                             "bg-green-500";
+    status === "Due Today" ? "bg-orange-500" :
+    status === "On time"   ? "bg-green-500" :
+                             "bg-gray-400";
   return <span className={`inline-block w-3.5 h-3.5 rounded-full ${color} shadow-sm`} />;
 }
 
@@ -62,13 +78,15 @@ function TrafficDot({ status }: { status: string }) {
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     Evaluation:      "bg-purple-100 text-purple-700 border-purple-200",
+    "For Inspection": "bg-blue-100 text-blue-700 border-blue-200",
+    "Ongoing Evaluation": "bg-purple-100 text-purple-700 border-purple-200",
     Inspection:      "bg-blue-100 text-blue-700 border-blue-200",
     "For Approval":  "bg-red-100 text-red-600 border-red-200",
     Released:        "bg-green-100 text-green-700 border-green-200",
     Returned:        "bg-gray-100 text-gray-600 border-gray-200",
     "For Compliance":"bg-orange-100 text-orange-600 border-orange-200",
     "Initial Review":"bg-indigo-100 text-indigo-700 border-indigo-200",
-    "Payment Verification":"bg-yellow-100 text-yellow-700 border-yellow-200",
+    "Under Review":"bg-yellow-100 text-yellow-700 border-yellow-200",
   };
   const cls = styles[status] ?? "bg-gray-100 text-gray-600 border-gray-200";
   return (
@@ -182,11 +200,12 @@ export default function ApplicationsPage() {
         id:            r.id ?? r.reference_no,
         reference_no:  r.reference_no ?? "",
         applicant_name:r.applicant_name ?? "",
+        applicant_email:r.applicant_email ?? "",
         project_name:  r.project_name ?? "",
         app_type:      r.app_type ?? r.permit_type ?? (r.reference_no?.startsWith("CLS") ? "C&LS" : "DP"),
         office:        r.office ?? r.processing_office ?? (r.region ? `${r.region} - Planning` : "–"),
         status:        r.status ?? r.current_stage ?? "",
-        queue_status:  r.queue_status ?? "",
+        queue_status:  computeQueueStatus(r.due_date ?? ""),
         date_received: r.date_received ?? r.created_at ?? "",
         date_released: r.date_released ?? "",
         region:        r.region ?? "",
@@ -268,9 +287,9 @@ export default function ApplicationsPage() {
 
   /* export stub */
   function exportCSV() {
-    const headers = ["Application No.","Applicant","Project Name","Type","Office","Status","Traffic Light","Date Received","Date Released"];
+    const headers = ["Application No.","Applicant","Email","Project Name","Type","Office","Status","Traffic Light","Date Received","Date Released"];
     const csvRows = [headers, ...filtered.map((r) => [
-      r.reference_no, r.applicant_name, r.project_name, r.app_type, r.office,
+      r.reference_no, r.applicant_name, r.applicant_email, r.project_name, r.app_type, r.office,
       r.status, r.queue_status, fmtDate(r.date_received), fmtDate(r.date_released),
     ])];
     const csv = csvRows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
@@ -321,7 +340,7 @@ export default function ApplicationsPage() {
             label="Traffic Light Status"
             value={trafficLight}
             onChange={setTrafficLight}
-            options={["Overdue", "Due Today", "Due Soon", "Pending"]}
+            options={["Overdue", "Due Today", "On time", "Pending"]}
           />
         </div>
 
@@ -474,8 +493,11 @@ export default function ApplicationsPage() {
                     <td className="px-5 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
                       {row.reference_no}
                     </td>
-                    <td className="px-4 py-3.5 text-gray-700 whitespace-nowrap">
-                      {row.applicant_name}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <div className="text-gray-700 font-medium">{row.applicant_name}</div>
+                      {row.applicant_email && (
+                        <div className="text-xs text-gray-400">{row.applicant_email}</div>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-gray-700 whitespace-nowrap">
                       {row.project_name}

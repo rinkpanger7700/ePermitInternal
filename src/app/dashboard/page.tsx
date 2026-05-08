@@ -13,7 +13,7 @@ export default function DashboardsModule() {
 
   useEffect(() => {
     // Read the stored role from login
-    const storedRole = localStorage.getItem("userRole") || "regional";
+    const storedRole = localStorage.getItem("userRole") || "Regional";
     setRole(storedRole);
   }, []);
 
@@ -21,13 +21,13 @@ export default function DashboardsModule() {
   if (!role) return <div className="animate-pulse h-64 bg-gray-100 rounded-xl" />;
 
   switch (role) {
-    case "admin":
+    case "Admin":
       return <AdminDashboard />;
-    case "executive":
+    case "Executive":
       return <ExecutiveDashboard />;
-    case "bureau":
+    case "Bureau":
       return <BureauDashboard />;
-    case "regional":
+    case "Regional":
     default:
       return <RegionalDashboard />;
   }

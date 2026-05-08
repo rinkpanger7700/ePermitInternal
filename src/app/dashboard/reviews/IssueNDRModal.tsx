@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { X, Calendar, AlertTriangle, XCircle, Image as ImageIcon, FileText, ChevronDown, Info } from "lucide-react";
+import { createClient } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 interface IssueNDRModalProps {
   app: {
+    id: string;
     reference_no: string;
     project_name: string;
     applicant_name: string;
@@ -11,6 +15,56 @@ interface IssueNDRModalProps {
 }
 
 export default function IssueNDRModal({ app, onClose }: IssueNDRModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const supabase = createClient();
+  const router = useRouter();
+
+  const handleIssueNdr = async () => {
+    setLoading(true);
+
+    await supabase
+      .from("applications")
+      .update({ current_stage: "For Compliance" })
+      .eq("id", app.id);
+
+    await supabase.from("reviews").insert({
+      application_id: app.id,
+      status: "NDR Issued",
+      review_date: new Date().toISOString().split("T")[0],
+      reviewer_name: "Current User",
+    });
+
+    setLoading(false);
+    setShowSuccess(true);
+  };
+
+  if (showSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="p-8 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <AlertTriangle size={36} className="text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">NDR Issued Successfully</h2>
+            <p className="text-sm text-gray-500 mb-1">{app.reference_no}</p>
+            <p className="text-xs text-gray-400 mb-2">{app.project_name}</p>
+            <p className="text-xs text-orange-600 font-medium mb-6 flex items-center gap-1">
+              <Info size={12} /> Status set to For Compliance
+            </p>
+            <button
+              onClick={() => { router.push("/dashboard/reviews"); }}
+              className="w-full py-2.5 rounded-lg bg-[#0033A0] text-white font-bold hover:bg-blue-800 transition-colors text-sm shadow"
+            >
+              Back to Reviews
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl flex flex-col max-h-[95vh] overflow-hidden">
@@ -253,8 +307,12 @@ export default function IssueNDRModal({ app, onClose }: IssueNDRModalProps) {
             <button className="px-8 py-2 rounded border border-blue-600 text-blue-700 text-sm font-bold hover:bg-blue-50 transition-colors">
               Preview NDR
             </button>
-            <button className="px-8 py-2 rounded bg-red-600 text-white text-sm font-bold shadow hover:bg-red-700 transition-colors">
-              Issue NDR to Applicant
+            <button
+              disabled={loading}
+              onClick={handleIssueNdr}
+              className="px-8 py-2 rounded bg-red-600 text-white text-sm font-bold shadow hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {loading ? "Issuing NDR..." : "Issue NDR to Applicant"}
             </button>
             <button onClick={onClose} className="px-8 py-2 rounded border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-100 transition-colors">
               Cancel

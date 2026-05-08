@@ -11,6 +11,7 @@ import IssueNDRModal from "../IssueNDRModal";
 
 /* ── Types ── */
 interface AppRow {
+  id: string;
   reference_no: string; applicant_name: string; project_name: string;
   app_type: string; status: string; queue_status: string; due_date: string;
 }
@@ -18,7 +19,7 @@ interface AppRow {
 /* ── Static data matching screenshot ── */
 const STEPS = ["Intake", "Auto-Check", "Requirements Validation", "Evaluation", "Inspection", "Approval", "Releasing"];
 const STEP_INDEX: Record<string, number> = {
-  "Initial Review": 0, "Auto-Check": 1, "Payment Verification": 1,
+  "Initial Review": 0, "Auto-Check": 1, "Under Review": 1,
   "Requirements Validation": 2, "Evaluation": 3, "Inspection": 4,
   "For Approval": 5, "Approval": 5, "Released": 6, "Releasing": 6,
 };
@@ -145,9 +146,12 @@ export default function ReviewPage() {
 
   const [app, setApp] = useState<AppRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showNdrModal, setShowNdrModal] = useState(false);
   const [reviewerNotes, setReviewerNotes] = useState("");
+  const [isCompliant, setIsCompliant] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
 
   const appId = decodeURIComponent(Array.isArray(params.id) ? params.id[0] : params.id ?? "");
@@ -159,17 +163,78 @@ export default function ReviewPage() {
       if (error || !data) { console.error("[Review] fetch error:", error?.message); setLoading(false); return; }
       const r = data as any;
       setApp({
+        id: r.id ?? r.reference_no,
         reference_no: r.reference_no ?? "", applicant_name: r.applicant_name ?? "",
         project_name: r.project_name ?? "",
         app_type: r.app_type ?? r.permit_type ?? (r.reference_no?.startsWith("CLS") ? "C&LS" : "DP"),
         status: "Requirements Validation",
         queue_status: r.queue_status ?? "", due_date: r.due_date ?? "",
       });
+
+      const { data: reviewData } = await supabase
+        .from("reviews")
+        .select("status, evaluation_remarks")
+        .eq("application_id", r.id ?? r.reference_no)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (reviewData) {
+        if (reviewData.status === "Compliant") {
+          setIsCompliant(true);
+        }
+        if (reviewData.evaluation_remarks) {
+          setReviewerNotes(reviewData.evaluation_remarks);
+        }
+      }
+
       setLoading(false);
     }
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId]);
+
+  const handleMarkCompliant = async () => {
+    if (!app) return;
+    setSaving(true);
+    const { error } = await supabase.from("reviews").insert({
+      application_id: app.id,
+      reviewer_name: "Requirements Validator",
+      review_date: new Date().toISOString().split("T")[0],
+      evaluation_remarks: reviewerNotes || "Marked as Compliant.",
+      status: "Compliant",
+    });
+
+    if (error) {
+      setMessage({ text: "Error marking as compliant: " + error.message, type: "error" });
+    } else {
+      setIsCompliant(true);
+      setMessage({ text: "Marked as compliant successfully.", type: "success" });
+    }
+    setSaving(false);
+  };
+
+  const handleSaveAndReview = async () => {
+    if (!app) return;
+    setSaving(true);
+    const { error } = await supabase.from("reviews").insert({
+      application_id: app.id,
+      reviewer_name: "Requirements Validator",
+      review_date: new Date().toISOString().split("T")[0],
+      evaluation_remarks: reviewerNotes || "Review Completed.",
+      status: "Completed",
+    });
+
+    if (error) {
+      setMessage({ text: "Error saving review: " + error.message, type: "error" });
+      setSaving(false);
+    } else {
+      setMessage({ text: "Review completed! Proceeding to Inspection page...", type: "success" });
+      setTimeout(() => {
+        router.push(`/dashboard/inspections/${encodeURIComponent(app.reference_no)}`);
+      }, 1500);
+    }
+  };
 
   useEffect(() => {
     function h(e: MouseEvent) { if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setShowActions(false); }
@@ -392,15 +457,35 @@ export default function ReviewPage() {
 
         {/* Reviewer Action Panel */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 flex flex-col gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs">🖊️</span>
-            <h3 className="text-xs font-bold text-gray-700">Reviewer Action Panel</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs">🖊️</span>
+              <h3 className="text-xs font-bold text-gray-700">Reviewer Action Panel</h3>
+            </div>
           </div>
-          <button onClick={() => router.push(`/dashboard/inspections/${encodeURIComponent(app.reference_no)}`)} className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-2.5 rounded-lg transition-colors">
-            <Save size={13}/> Save and Review
+          
+          {message && (
+            <div className={`p-3 rounded-lg text-xs font-medium flex items-start gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {message.type === 'success' ? <CheckCircle2 size={14} className="mt-0.5 flex-shrink-0" /> : <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />}
+              <span>{message.text}</span>
+            </div>
+          )}
+
+          <button 
+            disabled={saving}
+            onClick={handleSaveAndReview} 
+            className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50">
+            <Save size={13}/> {saving ? "Saving..." : "Save and Review"}
           </button>
-          <button className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold py-2.5 rounded-lg transition-colors">
-            <CheckCircle2 size={13}/> Mark as Compliant
+          <button 
+            disabled={saving || isCompliant}
+            onClick={handleMarkCompliant}
+            className={`w-full flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-lg transition-colors ${
+              isCompliant 
+                ? "bg-green-100 text-green-700 border border-green-200" 
+                : "border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            }`}>
+            <CheckCircle2 size={13}/> {saving ? "Saving..." : isCompliant ? "Compliant" : "Mark as Compliant"}
           </button>
           <button onClick={() => setShowNdrModal(true)} className="w-full flex items-center justify-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-lg transition-colors">
             <AlertTriangle size={13}/> Issue NDR

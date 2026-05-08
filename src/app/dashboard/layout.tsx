@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const navigation = [
+const ALL_NAV = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Applications", href: "/dashboard/applications", icon: FileText },
   { name: "Reviews", href: "/dashboard/reviews", icon: ClipboardCheck },
@@ -37,14 +37,16 @@ export default function DashboardLayout({
   const router = useRouter();
   const [userName, setUserName] = useState("DHSUD Employee");
   const [userRole, setUserRole] = useState("Evaluator");
+  const [rawRole, setRawRole] = useState("Regional");
 
   useEffect(() => {
-    const role = localStorage.getItem("userRole") || "regional";
+    const role = localStorage.getItem("userRole") || "Regional";
+    setRawRole(role);
     const roleLabels: Record<string, string> = {
-      regional: "Evaluator",
-      bureau: "Bureau Director",
-      executive: "Executive",
-      admin: "System Admin",
+      Regional: "Evaluator",
+      Bureau: "Bureau Director",
+      Executive: "Executive",
+      Admin: "System Admin",
     };
     setUserRole(roleLabels[role] || "Evaluator");
 
@@ -93,7 +95,7 @@ export default function DashboardLayout({
         {/* ─── Sidebar ─── */}
         <aside className="w-52 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
           <nav className="flex-1 py-4 px-3 space-y-0.5">
-            {navigation.map((item) => {
+            {ALL_NAV.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
               return (

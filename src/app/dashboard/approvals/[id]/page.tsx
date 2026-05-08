@@ -11,6 +11,7 @@ import RoutingHistoryModal from "../../components/RoutingHistoryModal";
 
 /* ── Types ── */
 interface AppRow {
+  id: string;
   reference_no: string; applicant_name: string; project_name: string;
   app_type: string; status: string; queue_status: string; due_date: string;
 }
@@ -18,7 +19,7 @@ interface AppRow {
 /* ── Static data matching screenshot ── */
 const STEPS = ["Intake", "Auto-Check", "Requirements Validation", "Evaluation", "Inspection", "Approval", "Releasing"];
 const STEP_INDEX: Record<string, number> = {
-  "Initial Review": 0, "Auto-Check": 1, "Payment Verification": 1,
+  "Initial Review": 0, "Auto-Check": 1, "Under Review": 1,
   "Requirements Validation": 2, "Evaluation": 3, "Inspection": 4, "Inspection in Progress": 4,
   "For Approval": 5, "Approval": 5, "Released": 6, "Releasing": 6,
 };
@@ -219,6 +220,8 @@ export default function ApprovalPage() {
   const [loading, setLoading] = useState(true);
   const [showActions, setShowActions] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
 
   const [outputType, setOutputType] = useState("Inspection Report");
@@ -233,6 +236,7 @@ export default function ApprovalPage() {
       if (error || !data) { console.error("[Review] fetch error:", error?.message); setLoading(false); return; }
       const r = data as any;
       setApp({
+        id: r.id,
         reference_no: r.reference_no ?? "", applicant_name: r.applicant_name ?? "",
         project_name: r.project_name ?? "",
         app_type: r.app_type ?? r.permit_type ?? (r.reference_no?.startsWith("CLS") ? "C&LS" : "DP"),
@@ -244,6 +248,55 @@ export default function ApprovalPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId]);
+
+  const handleApproveAndSign = async () => {
+    if (!app) return;
+    setFormLoading(true);
+
+    // Step 1: Update the approval record to 'Approved'
+    const { error: approvalErr } = await supabase
+      .from("approvals")
+      .update({ status: "Approved" })
+      .eq("application_id", app.id);
+
+    if (approvalErr) {
+      // If no approval record exists yet, insert one as Approved
+      const { error: insertErr } = await supabase
+        .from("approvals")
+        .insert({
+          application_id: app.id,
+          approver_name: "Regional Director",
+          approval_date: new Date().toISOString().split("T")[0],
+          status: "Approved",
+        });
+      if (insertErr) {
+        setMessage({ text: "Error approving: " + insertErr.message, type: "error" });
+        setFormLoading(false);
+        return;
+      }
+    }
+
+    // Step 2: Update the application stage directly
+    await supabase
+      .from("applications")
+      .update({ current_stage: "Ready for Release" })
+      .eq("id", app.id);
+
+    // Step 3: Insert a record into the releasing table
+    await supabase
+      .from("releasing")
+      .insert({
+        application_id: app.id,
+        released_by: "Pending Assignment",
+        release_date: new Date().toISOString().split("T")[0],
+        status: "Ready",
+      });
+
+    setMessage({ text: "Application approved! Moving to Releasing...", type: "success" });
+    setTimeout(() => {
+      router.push("/dashboard/approvals");
+    }, 1500);
+  };
 
   useEffect(() => {
     function h(e: MouseEvent) { if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setShowActions(false); }
@@ -508,8 +561,17 @@ export default function ApprovalPage() {
             </div>
 
             <div className="mt-auto pt-2 space-y-2">
-              <button onClick={() => router.push(`/dashboard/releasing/${encodeURIComponent(app.reference_no)}`)} className="w-full bg-[#16a34a] hover:bg-green-700 text-white text-xs font-bold py-2 rounded transition-colors shadow">
-                Approve and Sign
+              {message && (
+                <div className={`p-3 rounded-lg text-xs font-medium flex items-start gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                  <CheckCircle2 size={14} className="mt-0.5 flex-shrink-0" />
+                  <span>{message.text}</span>
+                </div>
+              )}
+              <button
+                onClick={handleApproveAndSign}
+                disabled={formLoading}
+                className="w-full bg-[#16a34a] hover:bg-green-700 text-white text-xs font-bold py-2 rounded transition-colors shadow disabled:opacity-50">
+                {formLoading ? "Processing..." : "Approve and Sign"}
               </button>
               <div className="grid grid-cols-2 gap-2">
                 <button className="w-full border border-gray-300 text-blue-700 text-xs font-semibold py-1.5 rounded hover:bg-gray-50 transition-colors">

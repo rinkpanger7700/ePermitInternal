@@ -113,12 +113,12 @@ function CaseModal({
           {/* Status banner */}
           <div
             className={`flex items-center gap-3 p-3 rounded-lg border ${app.queue_status === "Overdue"
-                ? "bg-red-50 border-red-200"
-                : app.queue_status === "Due Today"
-                  ? "bg-orange-50 border-orange-200"
-                  : app.queue_status === "Due Soon"
-                    ? "bg-yellow-50 border-yellow-200"
-                    : "bg-green-50 border-green-200"
+              ? "bg-red-50 border-red-200"
+              : app.queue_status === "Due Today"
+                ? "bg-orange-50 border-orange-200"
+                : app.queue_status === "Due Soon"
+                  ? "bg-yellow-50 border-yellow-200"
+                  : "bg-green-50 border-green-200"
               }`}
           >
             <AlertTriangle

@@ -144,7 +144,7 @@ export default function ApplicationDetailPage() {
       const { data, error } = await supabase
         .from("applications_with_queue_status")
         .select("*")
-        .eq("id", appId)
+        .eq("reference_no", appId)
         .single();
       if (error || !data) { console.error("[Detail] fetch error:", error?.message); setLoading(false); return; }
       const r = data as any;

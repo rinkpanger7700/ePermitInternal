@@ -158,8 +158,9 @@ export default function ReviewPage() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from("applications_with_queue_status").select("*").eq("reference_no", appId).single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appId);
+      const query = supabase.from("applications_with_queue_status").select("*");
+      const { data, error } = await (isUuid ? query.eq("id", appId) : query.eq("reference_no", appId)).single();
       if (error || !data) { console.error("[Review] fetch error:", error?.message); setLoading(false); return; }
       const r = data as any;
       setApp({
